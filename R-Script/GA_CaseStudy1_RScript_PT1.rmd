@@ -1,0 +1,233 @@
+---
+title: "Google Analytics Capstone: Cyclistic Bikes R Documentation"
+author: "Hannah J. Kissinger"
+date: "2023-02-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This article contains the R Script for the Google Analytics Capstone: Cyclistic Bikeshare. If you are interested in learning more about the derived insights click [here](link here)!
+
+
+Make sure to set appropriate working directory. Then load the required packages and data from .csv files. 
+```{r Load data, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Load packages
+library(tidyverse)
+library(plyr)
+
+#Load data
+Divvy_Trips_2019_Q2 <- read_csv("Divvy_Trips_2019_Q2.csv")
+Divvy_Trips_2019_Q3 <- read_csv("Divvy_Trips_2019_Q3.csv")
+Divvy_Trips_2019_Q4 <- read_csv("Divvy_Trips_2019_Q4.csv")
+Divvy_Trips_2020_Q1 <- read_csv("Divvy_Trips_2020_Q1.csv")
+
+```
+
+Compare the tables' column names.
+```{r Column names}
+colnames(Divvy_Trips_2019_Q2)
+colnames(Divvy_Trips_2019_Q3)
+colnames(Divvy_Trips_2019_Q4)
+colnames(Divvy_Trips_2020_Q1)
+```
+
+Identify the most common column names or use stakeholder's definitions. Change column names to match the chosen identifier. 
+
+Decision: Changed column names from 2019 Q2 and 2020 Q1 to match 2019 Q3 and 2019 Q4.
+```{r Rename columns, echo=TRUE, message=FALSE, warning=FALSE}
+#Standardize column names in 2019 Q2 and 2020 Q1 dataframes
+DT_2019_Q2 <- plyr::rename(Divvy_Trips_2019_Q2, c('01 - Rental Details Rental ID' = 'trip_id',
+         '01 - Rental Details Duration In Seconds Uncapped' = 'tripduration',
+         '01 - Rental Details Local Start Time' = 'start_time',
+         '01 - Rental Details Local End Time' = 'end_time',
+         '03 - Rental Start Station ID' = 'from_station_id',
+         '03 - Rental Start Station Name' = 'from_station_name',
+         '02 - Rental End Station ID' = 'to_station_id',
+         '02 - Rental End Station Name' = 'to_station_name',
+         'User Type' = 'usertype'))
+
+DT_2020_Q1 <- plyr::rename(Divvy_Trips_2020_Q1, c('ride_id' = 'trip_id',
+         'start_station_id' = 'from_station_id',
+         'started_at' = 'start_time',
+         'ended_at' = 'end_time',
+         'start_station_name' = 'from_station_name',
+         'end_station_id' = 'to_station_id',
+         'end_station_name' = 'to_station_name',
+         'member_casual' = 'usertype'))
+
+#Create dataframes for 2019 Q3 and 2019 Q4
+DT_2019_Q3 <- Divvy_Trips_2019_Q3
+DT_2019_Q4 <- Divvy_Trips_2019_Q4
+```
+
+Add the missing trip duration calculated column to the 2020 Q1 dataframe.
+```{r Add calculated trip duration, echo=TRUE, message=FALSE, warning=FALSE}
+#Load package
+library(lubridate)
+
+#Add trip duration column
+DT_2020_Q1 <- DT_2020_Q1 %>% 
+  mutate(tripduration = as.numeric(difftime(end_time, start_time, units = 'secs')))
+```
+
+Select relevant columns for analysis. 
+```{r Select columns, echo=TRUE, message=FALSE, warning=FALSE}
+#Check column names
+colnames(DT_2019_Q3)
+
+#Select columns
+DT_2019_Q2_df <- DT_2019_Q2 %>% 
+  select('trip_id', 'start_time', 'end_time', 'tripduration', 'from_station_id', 'from_station_name', 'to_station_id', 'to_station_name', 'usertype')
+
+DT_2019_Q3_df <- DT_2019_Q3 %>% 
+  select('trip_id', 'start_time', 'end_time', 'tripduration', 'from_station_id', 'from_station_name', 'to_station_id', 'to_station_name', 'usertype')
+
+DT_2019_Q4_df <- DT_2019_Q4 %>% 
+  select('trip_id', 'start_time', 'end_time', 'tripduration', 'from_station_id', 'from_station_name', 'to_station_id', 'to_station_name', 'usertype')
+
+DT_2020_Q1_df <- DT_2020_Q1 %>% 
+  select('trip_id', 'start_time', 'end_time', 'tripduration', 'from_station_id', 'from_station_name', 'to_station_id', 'to_station_name', 'usertype')
+
+```
+
+Add column for quarter-year to each dataframe.
+```{r Add quarter-year}
+DT_2019_Q2_df <- DT_2019_Q2_df %>% 
+  mutate(quarter_year = 'Q2_2019')
+
+DT_2019_Q3_df <- DT_2019_Q3_df %>% 
+  mutate(quarter_year = 'Q3_2019')
+
+DT_2019_Q4_df <- DT_2019_Q4_df %>% 
+  mutate(quarter_year = 'Q4_2019')
+
+DT_2020_Q1_df <- DT_2020_Q1_df %>% 
+  mutate(quarter_year = 'Q1_2020')
+```
+
+Combine dataframes.
+```{r Combine df}
+DT_all <- rbind(DT_2019_Q2_df, DT_2019_Q3_df, DT_2019_Q4_df, DT_2020_Q1_df)
+
+```
+
+Separate DateTime column to Date and Time.
+```{r Separate DateTime column}
+DT_all <- tidyr::separate(DT_all, start_time, c('start_date', 'start_time'), sep = ' ')
+DT_all <- tidyr::separate(DT_all, end_time, c('end_date', 'end_time'), sep = ' ')
+
+```
+
+Check data structure.
+```{r Glimpse, message=FALSE, warning=FALSE}
+glimpse(DT_all)
+```
+
+Change data structures to appropriate type and add month, day, year, day of week, and hour columns.
+```{r Data structure, message=FALSE, warning=FALSE, results='hide'}
+as.character(DT_all$from_station_id)
+as.character(DT_all$to_station_id)
+as.numeric(DT_all$tripduration)
+
+DT_all$date <- as.Date(DT_all$start_date) #The default format is yyyy-mm-dd
+DT_all$month <- format(as.Date(DT_all$date), "%m")
+DT_all$day <- format(as.Date(DT_all$date), "%d")
+DT_all$year <- format(as.Date(DT_all$date), "%Y")
+DT_all$day_of_week <- format(as.Date(DT_all$date), "%A")
+
+DT_all <- DT_all %>% 
+  mutate(hour = hour(hms(start_time)))
+```
+
+Drop start and end date columns
+```{r Remove extra date columns}
+drop <- c('start_date', 'end_date')
+DT_all_v2 <- DT_all[!(names(DT_all) %in% drop)]
+```
+
+Remove duplicates and NAs.
+```{r Remove duplicates and NAs}
+DT_all_v2 <- DT_all_v2[!duplicated(DT_all_v2$trip_id), ]
+DT_all_v2 <- na.omit(DT_all_v2) 
+```
+
+Standardize usertype column.
+```{r Standardize usertype}
+unique(DT_all_v2$usertype)
+DT_all_v2$usertype[DT_all_v2$usertype=='Subscriber'] <- 'member'
+DT_all_v2$usertype[DT_all_v2$usertype=='Customer'] <- 'casual'
+```
+
+Check if stakeholder's HQ is present in the data.
+```{r Check for HQ}
+DT_all_v2[grep('HQ', DT_all_v2$from_station_name), ]
+```
+
+Check the minimum trip duration for negative values.
+```{r Minimum trip duration}
+min(DT_all_v2$tripduration)
+```
+
+Remove bike data that is from HQ or has a negative trip duration.
+```{r Remove dirty data}
+DT_all_v3 <- DT_all_v2[!(DT_all_v2$from_station_name == 'HQ QR' | DT_all_v2$tripduration<0),]
+```
+
+#### Analysis
+
+##### Descriptive Statistics
+
+<u>Below I have included the analysis path suggested by the Google Analytics R-Script:</u>
+
+Summary of all trip durations.
+```{r Summary all trip durations}
+summary(DT_all_v3$tripduration)
+```
+
+Summary comparing all trip durations for days of week.
+```{r Summary comparing all trip durations by days of week}
+DT_all_v3$day_of_week <- ordered(DT_all_v3$day_of_week, levels=c('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
+aggregate(DT_all_v3$tripduration~DT_all_v3$day_of_week, FUN = summary)
+```
+
+Summary comparing trip duration of user types.
+```{r Summary comparing trip durations by user types}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype, FUN = summary)
+```
+
+Summary comparing trip durations of user types and days of the week.
+```{r Summary comparing trip durations of user type and day of week}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$day_of_week, FUN = summary)
+```
+
+<u>I was also interested in looking at how the user types compared at other time aggregates:</u>
+
+Summary comparing trip durations of user types by month.
+```{r Summary comparing trip durations of user type and month}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$month, FUN = summary)
+```
+
+Summary comparing user types by year.
+```{r Summary comparing trip durations of user type and year}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$year, FUN = summary)
+```
+
+Summary comparing user types by quarter-year.
+```{r Summary comparing trip durations of user type and quarter-year}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$quarter_year, FUN = summary)
+```
+
+Compare trip durations by user type and hour of the day.
+```{r Summary comparing trip durations of user type and hour}
+aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$hour, FUN = summary)
+
+```
+
+Export data for Tableau upload.
+```{r Export data}
+write.csv(DT_all_v3, file = 'DT_all_v3.csv')
+```
+
