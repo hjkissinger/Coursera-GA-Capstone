@@ -205,8 +205,6 @@ Summary comparing trip durations of user types and days of the week.
 aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$day_of_week, FUN = summary)
 ```
 
-<u>I was also interested in looking at how the user types compared at other time aggregates:</u>
-
 Summary comparing trip durations of user types by month.
 ```{r Summary comparing trip durations of user type and month}
 aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$month, FUN = summary)
@@ -226,6 +224,63 @@ Compare trip durations by user type and hour of the day.
 ```{r Summary comparing trip durations of user type and hour}
 aggregate(DT_all_v3$tripduration~DT_all_v3$usertype + DT_all_v3$hour, FUN = summary)
 
+```
+
+Analysis of trip counts by user types and data/time granularity.
+
+```{r Analysis counts}
+#Count trips by user type
+user_count <- DT_all_v3 %>% 
+  group_by(usertype) %>% 
+  dplyr::summarise(total_count=n(),.groups='drop')
+
+#Count trips by user type and weekday
+user_count_wkd <- DT_all_v3 %>% 
+  group_by(usertype, day_of_week) %>% 
+  dplyr::summarise(total_count=n(),.groups='drop')
+user_count_wkd_w <- spread(user_count_wkd, day_of_week, total_count)
+
+#Count trips weekly average
+trip_cnt_wkd_avg_mem <- user_count_wkd %>% 
+  filter(user_count_wkd$usertype == 'member') %>% 
+  dplyr::summarise(avg_wkd = mean(total_count),.groups='drop')
+
+trip_cnt_wkd_avg_c <- user_count_wkd %>% 
+  filter(user_count_wkd$usertype == 'casual') %>% 
+  dplyr::summarise(avg_wkd = mean(total_count),.groups='drop')
+
+#Count trips by user type and hour
+user_count_hr <- DT_all_v3 %>% 
+  group_by(usertype, hour) %>% 
+  dplyr::summarise(total_count=n(),.groups='drop')
+user_count_hr_w <- spread(user_count_hr, usertype, total_count)
+
+#Count trips by user type and quarter
+user_count_q <- DT_all_v3 %>% 
+  group_by(usertype, quarter_year) %>% 
+  dplyr::summarise(total_count=n(),.groups='drop')
+user_count_q_w <- spread(user_count_q, quarter_year, total_count)
+
+#Count trips by user type and month
+user_count_month <- DT_all_v3 %>% 
+  group_by(usertype, month) %>% 
+  dplyr::summarise(total_count=n(),.groups='drop')
+user_count_month_w <- spread(user_count_month, month, total_count)
+```
+
+Analysis of average trip duration by user types and data/time granularity.
+
+```{r}
+#Average duration by user type (min)
+user_td_avg <- DT_all_v3 %>% 
+  group_by(usertype) %>% 
+  dplyr::summarise(avg_tripduration_min = (mean(tripduration)/60))
+
+#Average tripduration by user type and weekday (min)
+user_wkd_avg <- DT_all_v3 %>% 
+  group_by(usertype, day_of_week) %>% 
+  dplyr::summarise(avg_tripduration_min = (mean(tripduration)/60),.groups='drop')
+user_wkd_avg_w <- spread(user_wkd_avg, day_of_week, avg_tripduration_min)
 ```
 
 Export data for Tableau upload.
